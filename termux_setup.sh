@@ -142,6 +142,7 @@ proot-distro login $DISTRO_NAME -- bash -c '
     cd "$EP_DIR/byparr_src"
     sed -i "s/requires-python = .*/requires-python = \">= 3.11\"/" pyproject.toml 2>/dev/null || true
     pip install --no-cache-dir --ignore-installed . --break-system-packages || true
+    python3 -m camoufox fetch || true
 
     # Explicitly install missing critical deps
     echo "[ℹ️] Installing critical dependencies..."
