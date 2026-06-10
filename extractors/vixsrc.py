@@ -222,6 +222,9 @@ class VixSrcExtractor:
         timeout = PROXY_TEST_TIMEOUT
         concurrency = PROXY_TEST_CONCURRENCY
         request_cookies = dict(self.cookies) if self.cookies else None
+        if request_cookies:
+            cf = request_cookies.get("cf_clearance", "")
+            logger.info("VixSrc curl using %d cookies, cf_clearance present=%s len=%d", len(request_cookies), bool(cf), len(cf))
 
         async def _try_one(proxy_value: str | None, imp: str):
             request_kwargs = {}
