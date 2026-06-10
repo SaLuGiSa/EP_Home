@@ -481,19 +481,7 @@ class VixSrcExtractor:
                         logger.info("aiohttp 403, trying FlareSolverr for %s", url)
                         fs_html = await self._fetch_with_flaresolverr(url, headers=final_headers, forced_proxy=forced_proxy)
                         if fs_html:
-                            class MockResponse:
-                                def __init__(self, text_content, status, response_url):
-                                    self._text = text_content
-                                    self.status = status
-                                    self.status_code = status
-                                    self.text = text_content
-                                    self.url = response_url
-                                    self.headers = {}
-                                async def text_async(self):
-                                    return self._text
-                                def raise_for_status(self):
-                                    pass
-                            return MockResponse(fs_html, 200, url)
+                            logger.info("FlareSolverr solved challenge, retrying with cookies via curl_cffi")
                     except Exception as fs_exc:
                         logger.warning("FlareSolverr fallback failed for %s: %s", url, fs_exc)
                     try:
