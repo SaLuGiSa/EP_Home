@@ -5,7 +5,7 @@ import threading
 
 logger = logging.getLogger(__name__)
 
-_CONFIG_DIR = os.environ.get("CONFIG_DIR", "/data")
+_CONFIG_DIR = os.environ.get("CONFIG_DIR", "/tmp/data")
 _CONFIG_FILE = os.path.join(_CONFIG_DIR, "config.json")
 
 DEFAULT_CONFIG = {
