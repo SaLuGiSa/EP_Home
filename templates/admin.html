@@ -349,6 +349,7 @@
                     <option value="">— Select extractor —</option>
                 </select>
                 <input type="text" id="new-extractor-proxy" placeholder="Proxy URL">
+                <button class="btn btn-sm" id="extractor-proxy-toggle" style="background:var(--surface);border:1px solid var(--border-primary);color:var(--text-muted);cursor:pointer;white-space:nowrap" onclick="toggleExtractorProxyMode()">Proxy</button>
                 <button class="btn btn-primary btn-sm" onclick="addExtractorProxy()">+ Add</button>
             </div>
         </div>
@@ -458,6 +459,7 @@
 let config = {};
 let extractorProxies = {};
 let sslOff = false;
+let extractorProxyMode = 'proxy';
 
 function toast(msg, type='success') {
     const t = document.getElementById('toast');
@@ -515,13 +517,18 @@ async function loadConfig() {
 function renderExtractorProxies() {
     const container = document.getElementById('extractor-proxies-list');
     container.innerHTML = '';
-    for (const [name, proxies] of Object.entries(extractorProxies)) {
-        const proxy = Array.isArray(proxies) ? proxies[0] : proxies;
+    for (const [name, entry] of Object.entries(extractorProxies)) {
+        let isFile = false, value = '';
+        if (typeof entry === 'string') { value = entry; }
+        else if (Array.isArray(entry)) { value = entry[0] || ''; }
+        else if (entry && entry.file) { isFile = true; value = entry.file; }
         const div = document.createElement('div');
         div.className = 'extractor-row';
+        const modeLabel = isFile ? '<span style="font-size:0.7rem;color:var(--accent-primary);padding:2px 6px;border:1px solid var(--accent-primary);border-radius:4px;margin-right:4px">FILE</span>' : '';
         div.innerHTML = `
             <span class="name">${name}</span>
-            <input type="text" value="${proxy || ''}" onchange="updateExtractorProxy('${name}', this.value)">
+            ${modeLabel}
+            <input type="text" value="${value}" onchange="updateExtractorProxy('${name}', this.value)">
             <button class="btn btn-danger btn-sm" onclick="removeExtractorProxy('${name}')">✕</button>
         `;
         container.appendChild(div);
@@ -578,6 +585,25 @@ async function saveField(key, value) {
     });
     if (resp.ok) { config[key] = value; toast('✓ Saved: ' + humanizeKey(key)); }
     else { toast('✗ Failed: ' + humanizeKey(key), 'error'); }
+}
+
+function toggleExtractorProxyMode() {
+    extractorProxyMode = extractorProxyMode === 'proxy' ? 'file' : 'proxy';
+    const btn = document.getElementById('extractor-proxy-toggle');
+    const input = document.getElementById('new-extractor-proxy');
+    if (extractorProxyMode === 'file') {
+        btn.textContent = 'FILE';
+        btn.style.background = 'rgba(99,102,241,0.2)';
+        btn.style.borderColor = 'rgba(99,102,241,0.5)';
+        btn.style.color = '#818cf8';
+        input.placeholder = 'File path or URL (one proxy per line)';
+    } else {
+        btn.textContent = 'Proxy';
+        btn.style.background = 'var(--surface)';
+        btn.style.borderColor = 'var(--border-primary)';
+        btn.style.color = 'var(--text-muted)';
+        input.placeholder = 'Proxy URL';
+    }
 }
 
 async function reconnectWarp() {
@@ -738,16 +764,16 @@ function removeTransportRoute(index) {
 async function addExtractorProxy() {
     const sel = document.getElementById('new-extractor-name');
     const name = sel.value;
-    const proxy = document.getElementById('new-extractor-proxy').value.trim();
-    if (!name || !proxy) { toast('Select an extractor and enter a proxy', 'error'); return; }
+    const value = document.getElementById('new-extractor-proxy').value.trim();
+    if (!name || !value) { toast('Select an extractor and enter a value', 'error'); return; }
     const params = new URLSearchParams(window.location.search);
     const pw = params.get('api_password');
     const resp = await fetch('/api/admin/extractor/proxy' + (pw ? '?api_password=' + pw : ''), {
         method: 'POST', headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({extractor: name, proxy: proxy})
+        body: JSON.stringify({extractor: name, proxy: value, type: extractorProxyMode})
     });
     if (resp.ok) {
-        extractorProxies[name] = [proxy];
+        extractorProxies[name] = extractorProxyMode === 'file' ? {file: value} : value;
         renderExtractorProxies();
         populateExtractorSelect(config.available_extractors || []);
         document.getElementById('new-extractor-name').value = '';
@@ -757,11 +783,14 @@ async function addExtractorProxy() {
 }
 
 async function updateExtractorProxy(name, value) {
+    const entry = extractorProxies[name];
+    const isFile = entry && entry.file;
+    const type = isFile ? 'file' : 'proxy';
     const params = new URLSearchParams(window.location.search);
     const pw = params.get('api_password');
     const resp = await fetch('/api/admin/extractor/proxy' + (pw ? '?api_password=' + pw : ''), {
         method: 'POST', headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({extractor: name, proxy: value})
+        body: JSON.stringify({extractor: name, proxy: value, type: type})
     });
     if (resp.ok) toast('Updated proxy for ' + name);
     else toast('Failed to update', 'error');

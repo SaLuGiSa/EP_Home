@@ -752,13 +752,17 @@ class HLSProxyPagesMixin:
 
         extractor = data.get("extractor")
         proxy = data.get("proxy", "")
+        ptype = data.get("type", "proxy")
 
         if not extractor:
             return web.Response(status=400, text="Missing 'extractor' field")
 
         extractor_proxies = config_store.get("extractor_proxies", {})
         if proxy:
-            extractor_proxies[extractor.lower()] = [proxy]
+            if ptype == "file":
+                extractor_proxies[extractor.lower()] = {"file": proxy}
+            else:
+                extractor_proxies[extractor.lower()] = proxy
         else:
             extractor_proxies.pop(extractor.lower(), None)
 

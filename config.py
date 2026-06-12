@@ -9,8 +9,51 @@ import urllib.request
 from dotenv import load_dotenv
 from config_store import get as _cfg_get, set as _cfg_set, get_all as _cfg_get_all
 
-_proxy_file_cache: dict[str, tuple[float, list]] = {}
-_PROXY_FILE_TTL = 600
+_proxy_source_cache: dict[str, tuple[float, list]] = {}
+_PROXY_SOURCE_TTL = 600
+
+
+def get_extractor_proxies(extractor_name: str) -> list:
+    """Returns proxies from config_store for the given extractor.
+    Supports: direct proxy string, list (backward compat), or dict with 'file' key (file/URL source).
+    """
+    if not extractor_name:
+        return []
+    extractor_proxies = _cfg_get("extractor_proxies", {})
+    entry = extractor_proxies.get(extractor_name.lower())
+    if not entry:
+        return []
+    if isinstance(entry, str):
+        return [entry]
+    if isinstance(entry, list):
+        return entry
+    if isinstance(entry, dict) and "file" in entry:
+        return _read_proxy_source(entry["file"])
+    return []
+
+
+def _read_proxy_source(source: str) -> list:
+    now = time.time()
+    cached = _proxy_source_cache.get(source)
+    if cached and (now - cached[0]) < _PROXY_SOURCE_TTL:
+        return cached[1]
+    try:
+        if source.startswith(("http://", "https://")):
+            with urllib.request.urlopen(source, timeout=10) as resp:
+                text = resp.read().decode("utf-8", errors="ignore")
+        else:
+            with open(source, "r", encoding="utf-8") as f:
+                text = f.read()
+        proxies = []
+        for line in text.splitlines():
+            line = line.strip()
+            if line and not line.startswith("#"):
+                proxies.append(line)
+        _proxy_source_cache[source] = (now, proxies)
+        return proxies
+    except Exception as e:
+        logger.warning(f"Error reading proxy source {source}: {e}")
+        return []
 
 # ContextVar for thread-safe/async-safe warp bypass state
 BYPASS_WARP_CONTEXT = contextvars.ContextVar("bypass_warp", default=False)
@@ -57,79 +100,6 @@ class ProxyList(list):
     def __init__(self, values=(), strict: bool = False):
         super().__init__(values)
         self.strict = strict
-
-
-def _strip_env_assignment(value: str, env_var: str) -> str:
-    prefix = f"{env_var}="
-    return value[len(prefix):].strip() if value.startswith(prefix) else value
-
-
-def parse_proxies(proxy_env_var: str) -> list:
-    """Analizza una stringa di proxy separati da virgola da una variabile d'ambiente."""
-    proxies_str = _strip_env_assignment(os.environ.get(proxy_env_var, "").strip(), proxy_env_var)
-    if proxies_str:
-        proxies = []
-        for proxy in proxies_str.split(","):
-            proxy = proxy.strip()
-            if proxy.startswith("="):
-                proxy = proxy[1:].strip()
-            if proxy:
-                proxies.append(proxy)
-        return proxies
-    return []
-
-
-def parse_proxy_file(proxy_file_env_var: str) -> list:
-    """Read proxies from comma-separated file paths/URLs, one proxy per line. Cached for 10 min."""
-    raw = _strip_env_assignment(os.environ.get(proxy_file_env_var, "").strip(), proxy_file_env_var)
-    if not raw:
-        return []
-    now = time.time()
-    cached = _proxy_file_cache.get(raw)
-    if cached and (now - cached[0]) < _PROXY_FILE_TTL:
-        return cached[1]
-    proxies = []
-    for path in raw.split(","):
-        path = path.strip()
-        if not path:
-            continue
-        try:
-            if path.startswith(("http://", "https://")):
-                with urllib.request.urlopen(path, timeout=10) as response:
-                    text = response.read().decode("utf-8", errors="ignore")
-            else:
-                with open(path, "r", encoding="utf-8") as file:
-                    text = file.read()
-            for line in text.splitlines():
-                line = line.strip()
-                if line.startswith("="):
-                    line = line[1:].strip()
-                if not line or line.startswith("#"):
-                    continue
-                if line not in proxies:
-                    proxies.append(line)
-        except Exception as e:
-            logger.warning(f"Error reading proxy file {path}: {e}")
-    _proxy_file_cache[raw] = (now, proxies)
-    return proxies
-
-
-def get_extractor_proxies(extractor_name: str) -> list:
-    """Returns proxies from config_store or EXTRACTOR_PROXY/EXTRACTOR_PROXY_FILE env vars."""
-    if not extractor_name:
-        return []
-    prefix = extractor_name.upper().replace('-', '_')
-    # Check config_store first (dynamic config)
-    extractor_proxies = _cfg_get("extractor_proxies", {})
-    stored = extractor_proxies.get(extractor_name.lower(), [])
-    if stored:
-        return stored
-    # Fallback to env vars
-    proxies = []
-    for proxy in parse_proxies(f"{prefix}_PROXY") + parse_proxy_file(f"{prefix}_PROXY_FILE"):
-        if proxy and proxy not in proxies:
-            proxies.append(proxy)
-    return proxies
 
 
 def get_preferred_proxy(proxies: list | None) -> str | None:
