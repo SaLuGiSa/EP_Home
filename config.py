@@ -710,7 +710,7 @@ def reload_config():
     mod.TRANSPORT_ROUTES = _get_dynamic_transport_routes()
     mod.MPD_MODE = _cfg_get("mpd_mode", "legacy")
     mod.DVR_ENABLED = _cfg_get("dvr_enabled", False)
-    mod.RECORDINGS_DIR = _cfg_get("recordings_dir", "/data/recordings")
+    mod.RECORDINGS_DIR = _cfg_get("recordings_dir", "/tmp/recordings")
     mod.MAX_RECORDING_DURATION = _cfg_get("max_recording_duration", 28800)
     mod.RECORDINGS_RETENTION_DAYS = _cfg_get("recordings_retention_days", 7)
     mod.FLARESOLVERR_URL = _cfg_get("flaresolverr_url", "http://localhost:8191")
@@ -744,7 +744,7 @@ def __getattr__(name):
         "TRANSPORT_ROUTES": _get_dynamic_transport_routes,
         "MPD_MODE": lambda: _cfg_get("mpd_mode", "legacy"),
         "DVR_ENABLED": lambda: _cfg_get("dvr_enabled", False),
-        "RECORDINGS_DIR": lambda: _cfg_get("recordings_dir", "/data/recordings"),
+        "RECORDINGS_DIR": lambda: _cfg_get("recordings_dir", "/tmp/recordings"),
         "MAX_RECORDING_DURATION": lambda: _cfg_get("max_recording_duration", 28800),
         "RECORDINGS_RETENTION_DAYS": lambda: _cfg_get("recordings_retention_days", 7),
         "FLARESOLVERR_URL": lambda: _cfg_get("flaresolverr_url", "http://localhost:8191"),
