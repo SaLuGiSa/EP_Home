@@ -5,7 +5,7 @@ import threading
 
 logger = logging.getLogger(__name__)
 
-_CONFIG_DIR = os.environ.get("CONFIG_DIR", os.path.dirname(os.path.abspath(__file__)))
+_CONFIG_DIR = os.environ.get("CONFIG_DIR", "/data")
 _CONFIG_FILE = os.path.join(_CONFIG_DIR, "config.json")
 
 DEFAULT_CONFIG = {
@@ -32,7 +32,7 @@ DEFAULT_CONFIG = {
     "warp_off_extractors": [],
     "mpd_mode": "legacy",
     "dvr_enabled": False,
-    "recordings_dir": "recordings",
+    "recordings_dir": "/data/recordings",
     "max_recording_duration": 28800,
     "recordings_retention_days": 7,
     "flaresolverr_url": "http://localhost:8191",
@@ -50,6 +50,7 @@ _config_data = None
 
 def _load():
     global _config_data
+    os.makedirs(_CONFIG_DIR, exist_ok=True)
     if os.path.exists(_CONFIG_FILE):
         try:
             with open(_CONFIG_FILE, "r") as f:
@@ -69,6 +70,7 @@ def _save():
     if _config_data is None:
         return
     try:
+        os.makedirs(_CONFIG_DIR, exist_ok=True)
         with open(_CONFIG_FILE, "w") as f:
             json.dump(_config_data, f, indent=2)
     except Exception as e:

@@ -21,7 +21,7 @@ PROXY_SOURCE_LIST = contextvars.ContextVar("proxy_source_list", default=None)
 load_dotenv()
 
 # --- Log Level Configuration ---
-LOG_LEVEL_STR = os.environ.get("LOG_LEVEL", "WARNING").upper()
+LOG_LEVEL_STR = "WARNING"
 LOG_LEVEL_MAP = {
     "DEBUG": logging.DEBUG,
     "INFO": logging.INFO,
@@ -30,10 +30,9 @@ LOG_LEVEL_MAP = {
     "CRITICAL": logging.CRITICAL,
 }
 LOG_LEVEL = LOG_LEVEL_MAP.get(LOG_LEVEL_STR, logging.WARNING)
-PROXY_TEST_TIMEOUT = int(os.environ.get("PROXY_TEST_TIMEOUT", "10"))
+PROXY_TEST_TIMEOUT = 10
 cpu_cores = os.cpu_count() or 4
-default_concurrency = 10 if cpu_cores == 1 else min(100, max(30, cpu_cores * 15))
-PROXY_TEST_CONCURRENCY = max(1, int(os.environ.get("PROXY_TEST_CONCURRENCY", str(default_concurrency))))
+PROXY_TEST_CONCURRENCY = 10 if cpu_cores == 1 else min(100, max(30, cpu_cores * 15))
 WARP_PROXY_URL = "socks5h://127.0.0.1:1080"
 
 logging.basicConfig(
@@ -359,50 +358,6 @@ async def get_preferred_proxy_for_url_async(
     if result:
         SELECTED_PROXY_CONTEXT.set(result)
     return result
-
-
-def parse_transport_routes() -> list:
-    """Analizza TRANSPORT_ROUTES nel formato {URL=domain, PROXY=proxy, DISABLE_SSL=true/false}."""
-    routes_str = os.environ.get("TRANSPORT_ROUTES", "").strip()
-    if not routes_str:
-        return []
-
-    routes = []
-    try:
-        route_parts = [part.strip() for part in routes_str.replace(" ", "").split("},{")]
-
-        for part in route_parts:
-            if not part:
-                continue
-
-            part = part.strip("{}")
-
-            url_match = None
-            proxy_match = None
-            disable_ssl_match = None
-
-            for item in part.split(","):
-                if item.startswith("URL="):
-                    url_match = item[4:]
-                elif item.startswith("PROXY="):
-                    proxy_match = item[6:]
-                elif item.startswith("DISABLE_SSL="):
-                    disable_ssl_str = item[12:].lower()
-                    disable_ssl_match = disable_ssl_str in ("true", "1", "yes", "on")
-
-            if url_match:
-                routes.append(
-                    {
-                        "url": url_match,
-                        "proxy": proxy_match if proxy_match else None,
-                        "disable_ssl": disable_ssl_match if disable_ssl_match is not None else False,
-                    }
-                )
-
-    except Exception as e:
-        logger.warning(f"Error parsing TRANSPORT_ROUTES: {e}")
-
-    return routes
 
 
 _PROXY_STATUS_CACHE = {"alive": True, "last_check": 0}
@@ -765,7 +720,7 @@ def reload_config():
     mod.TRANSPORT_ROUTES = _get_dynamic_transport_routes()
     mod.MPD_MODE = _cfg_get("mpd_mode", "legacy")
     mod.DVR_ENABLED = _cfg_get("dvr_enabled", False)
-    mod.RECORDINGS_DIR = _cfg_get("recordings_dir", "recordings")
+    mod.RECORDINGS_DIR = _cfg_get("recordings_dir", "/data/recordings")
     mod.MAX_RECORDING_DURATION = _cfg_get("max_recording_duration", 28800)
     mod.RECORDINGS_RETENTION_DAYS = _cfg_get("recordings_retention_days", 7)
     mod.FLARESOLVERR_URL = _cfg_get("flaresolverr_url", "http://localhost:8191")
@@ -799,7 +754,7 @@ def __getattr__(name):
         "TRANSPORT_ROUTES": _get_dynamic_transport_routes,
         "MPD_MODE": lambda: _cfg_get("mpd_mode", "legacy"),
         "DVR_ENABLED": lambda: _cfg_get("dvr_enabled", False),
-        "RECORDINGS_DIR": lambda: _cfg_get("recordings_dir", "recordings"),
+        "RECORDINGS_DIR": lambda: _cfg_get("recordings_dir", "/data/recordings"),
         "MAX_RECORDING_DURATION": lambda: _cfg_get("max_recording_duration", 28800),
         "RECORDINGS_RETENTION_DAYS": lambda: _cfg_get("recordings_retention_days", 7),
         "FLARESOLVERR_URL": lambda: _cfg_get("flaresolverr_url", "http://localhost:8191"),

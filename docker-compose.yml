@@ -6,8 +6,6 @@ services:
     ports:
       - "7860:7860"
     environment:
-      - CONFIG_DIR=/data
-      - RECORDINGS_DIR=/data/recordings
       #- API_PASSWORD=
       - PORT=7860
     volumes:

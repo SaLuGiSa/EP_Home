@@ -53,8 +53,7 @@ EOF
 }
 
 # --- Cloudflare WARP Setup ---
-if [ "$ENABLE_WARP" = "true" ]; then
-    if [ "$WARP_MODE" = "wireproxy" ]; then
+if [ "$WARP_MODE" = "wireproxy" ]; then
         start_wireproxy_warp
     else
     echo "Starting Cloudflare WARP..."
@@ -120,13 +119,12 @@ if [ "$ENABLE_WARP" = "true" ]; then
         
         warp-cli --accept-tos status
 
-    fi
-    fi
 fi
+    fi
 
 PROXY_VARS=""
 SOLVERS_FORCE_WARP_PROXY="${SOLVERS_FORCE_WARP_PROXY:-false}"
-if [ "$ENABLE_WARP" = "true" ] && [ "$SOLVERS_FORCE_WARP_PROXY" = "true" ]; then
+if [ "$SOLVERS_FORCE_WARP_PROXY" = "true" ]; then
     PROXY_VARS="HTTP_PROXY=socks5://${WARP_PROXY_HOST}:${WARP_PROXY_PORT} HTTPS_PROXY=socks5://${WARP_PROXY_HOST}:${WARP_PROXY_PORT} NO_PROXY=localhost,127.0.0.1"
     echo "FlareSolverr forced to use WARP SOCKS5 proxy globally: socks5://${WARP_PROXY_HOST}:${WARP_PROXY_PORT}"
 else
